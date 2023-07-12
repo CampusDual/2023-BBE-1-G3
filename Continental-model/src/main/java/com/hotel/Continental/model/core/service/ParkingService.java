@@ -14,7 +14,6 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
 import java.util.Date;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -109,12 +108,11 @@ public class ParkingService implements IParkingService {
         }
         //Insertar en la tabla parking_history
         Map<String,Object> attrMapParkingHistoryInsert = Map.of(ParkingHistoryDao.ID_PARKING,attrMap.get(ParkingHistoryDao.ID_PARKING),ParkingHistoryDao.ID_BOOKING,attrMap.get(ParkingHistoryDao.ID_BOOKING),ParkingHistoryDao.ENTRY_DATE,currentDate);
-        EntityResult erInsert = parkingHistoryService.parkingHistoryInsert(attrMapParkingHistoryInsert);
+        parkingHistoryService.parkingHistoryInsert(attrMapParkingHistoryInsert);
         //Actualizar tabla parking para sumar 1 a los coches que hay en el parking
         occupiedCapacity++;
         Map<String,Object> keyMapParkingUpdate = Map.of(ParkingDao.ID_PARKING,attrMap.get(ParkingDao.ID_PARKING));
         Map<String,Object> attrMapParkingUpdate = Map.of(ParkingDao.OCCUPIED_CAPACITY,occupiedCapacity);
-        EntityResult erUpdate = this.daoHelper.update(parkingDao,attrMapParkingUpdate,keyMapParkingUpdate);
-        return erUpdate;
+        return this.daoHelper.update(parkingDao,attrMapParkingUpdate,keyMapParkingUpdate);
     }
 }

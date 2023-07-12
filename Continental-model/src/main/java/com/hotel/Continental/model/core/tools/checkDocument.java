@@ -2,6 +2,10 @@ package com.hotel.continental.model.core.tools;
 
 public class CheckDocument {
 
+    private CheckDocument() {
+        throw new IllegalStateException("Utility Class");
+    }
+
     /**
      * Metodo que comprueba si el documento es valido
      *

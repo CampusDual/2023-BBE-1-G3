@@ -1,7 +1,6 @@
 package com.hotel.continental.model.core.service;
 
 import com.hotel.continental.api.core.service.IEmployeeService;
-import com.hotel.continental.model.core.dao.ClientDao;
 import com.hotel.continental.model.core.dao.EmployeeDao;
 import com.hotel.continental.model.core.dao.HotelDao;
 import com.hotel.continental.model.core.tools.CheckDocument;
@@ -50,13 +49,11 @@ public class EmployeeService implements IEmployeeService {
             return er;
         }
         //Comprobamos que el documento es válido
-        if (attrMap.get(EmployeeDao.DOCUMENT) != null) {
+        if (attrMap.get(EmployeeDao.DOCUMENT) != null && !CheckDocument.checkDocument((String) attrMap.get(EmployeeDao.DOCUMENT), "ES")) {
             //Si el documento no es valido esta mal
-            if (!CheckDocument.checkDocument((String) attrMap.get(EmployeeDao.DOCUMENT), "ES")) {
                 er.setMessage(ErrorMessages.DOCUMENT_NOT_VALID);
                 return er;
             }
-        }
         //Check que no existe el nif
         filter = new HashMap<>();
         filter.put(EmployeeDao.DOCUMENT, attrMap.get(EmployeeDao.DOCUMENT));
@@ -87,12 +84,10 @@ public class EmployeeService implements IEmployeeService {
             return er;
         }
         //Comprobamos que el documento es válido
-        if (attrMap.get(EmployeeDao.DOCUMENT) != null) {
+        if (attrMap.get(EmployeeDao.DOCUMENT) != null && !CheckDocument.checkDocument((String) attrMap.get(EmployeeDao.DOCUMENT), "ES")) {
             //Si el documento no es valido esta mal
-            if (!CheckDocument.checkDocument((String) attrMap.get(EmployeeDao.DOCUMENT), "ES")) {
                 er.setMessage(ErrorMessages.DOCUMENT_NOT_VALID);
                 return er;
-            }
         }
 
         // Comprobar que el empleado exista

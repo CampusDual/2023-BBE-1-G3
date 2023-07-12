@@ -1,6 +1,5 @@
 package com.hotel.continental.ws.core.rest;
 
-import com.hotel.continental.api.core.service.IHotelService;
 import com.hotel.continental.api.core.service.IParkingService;
 import com.ontimize.jee.common.dto.EntityResult;
 import com.ontimize.jee.server.rest.ORestController;
