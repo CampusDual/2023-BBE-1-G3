@@ -39,7 +39,7 @@ public class CriteriaService implements ICriteriaService {
             Field[] fields = CriteriaDao.class.getDeclaredFields();
             attrList.clear();
             for (Field field : fields) {
-                attrList.add(field.getName());
+                attrList.add(field.getName().toLowerCase());
             }
         }
         EntityResult er = this.daoHelper.query(this.criteriaDao, keyMap, attrList);

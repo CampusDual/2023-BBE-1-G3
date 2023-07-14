@@ -53,8 +53,6 @@ class BookingServiceTest {
     @Mock
     RoomTypeDao roomTypeDao;
     @Mock
-    SeasonDao seasonDao;
-    @Mock
     ExtraExpensesDao extraExpensesDao;
 
     @ParameterizedTest(name = "Test case {index} : {0}")
@@ -632,13 +630,6 @@ class BookingServiceTest {
                                     erCriteria.put(CriteriaDao.NAME, List.of("Test", "Test", "Test", "Test", "Test"));
                                     erCriteria.put(CriteriaDao.MULTIPLIER, List.of(new BigDecimal(1), new BigDecimal(1), new BigDecimal(1), new BigDecimal(1), new BigDecimal(1)));
                                     return Mockito.when(daoHelper.query(Mockito.any(CriteriaDao.class), Mockito.anyMap(), Mockito.anyList())).thenReturn(erCriteria);
-                                },
-                                (Supplier) () -> {
-                                    EntityResult erSeason = new EntityResultMapImpl();
-                                    erSeason.setCode(EntityResult.OPERATION_SUCCESSFUL);
-                                    erSeason.put(SeasonDao.CRITERIA_ID, List.of(criteriaID.get(3)));
-                                    erSeason.put(RoomTypeDao.PRICE, List.of(100.0));
-                                    return Mockito.when(daoHelper.query(Mockito.any(SeasonDao.class), Mockito.anyMap(), Mockito.anyList(), Mockito.anyString())).thenReturn(erSeason);
                                 }
                         )
                 ),

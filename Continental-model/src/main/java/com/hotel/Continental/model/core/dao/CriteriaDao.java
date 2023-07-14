@@ -16,5 +16,7 @@ public class CriteriaDao extends OntimizeJdbcDaoSupport {
 
     public static final String NAME="name";
     public static final String DESCRIPTION="description";
+    public static final String TYPE="type";
+    public static final String DATE_CONDITION="date_condition";
     public static final String MULTIPLIER="multiplier";
 }

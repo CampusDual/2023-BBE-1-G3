@@ -63,9 +63,9 @@ server:
 spring:
    datasource:
       driver-class-name: org.postgresql.Driver
-      jdbc-url: jdbc:postgresql://45.84.210.174:65432/2023-BBE-1-G3
-      username: Backend_2023_G3
-      password: 1qaz2wsx
+      jdbc-url: jdbc:postgresql://localhost:5432/campusDualTest
+      username: postgres
+      password: briana2000
       initial-size: 10
       test-on-borrow: true
    main:

@@ -1,9 +1,16 @@
 package com.hotel.continental.model.core.service;
 
-import com.hotel.continental.model.core.dao.*;
-import com.hotel.continental.model.core.tools.ErrorMessages;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hotel.continental.api.core.service.IBookingService;
+import com.hotel.continental.model.core.dao.*;
+import com.hotel.continental.model.core.tools.DateUtils.DateCondition;
+import com.hotel.continental.model.core.tools.DateUtils.DateConditionModule;
+import com.hotel.continental.model.core.tools.ErrorMessages;
 import com.ontimize.jee.common.db.SQLStatementBuilder;
+import com.ontimize.jee.common.db.SQLStatementBuilder.BasicExpression;
+import com.ontimize.jee.common.db.SQLStatementBuilder.BasicField;
+import com.ontimize.jee.common.db.SQLStatementBuilder.BasicOperator;
 import com.ontimize.jee.common.dto.EntityResult;
 import com.ontimize.jee.common.dto.EntityResultMapImpl;
 import com.ontimize.jee.common.security.PermissionsProviderSecured;
@@ -12,16 +19,18 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.security.access.annotation.Secured;
 import org.springframework.stereotype.Service;
-import com.ontimize.jee.common.db.SQLStatementBuilder.BasicExpression;
-import com.ontimize.jee.common.db.SQLStatementBuilder.BasicField;
-import com.ontimize.jee.common.db.SQLStatementBuilder.BasicOperator;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.time.*;
+import java.time.DayOfWeek;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 @Lazy
 @Service("BookingService")
@@ -44,9 +53,9 @@ public class BookingService implements IBookingService {
     @Autowired
     private CriteriaDao criteriaDao;
     @Autowired
-    private SeasonDao seasonDao;
-    @Autowired
     private ExtraExpensesDao extraExpensesDao;
+    @Autowired
+    private CriteriaService criteriaService;
     public static final String INITIALDATE = "initialdate";
     public static final String FINALDATE = "finaldate";
 
@@ -104,7 +113,7 @@ public class BookingService implements IBookingService {
         if (attrMap.get(BookingDao.ROOMID) != null) {
             roomAttrMap.put(BookingDao.ROOMID, attrMap.get(RoomDao.IDHABITACION));
         }
-        if(attrMap.get(RoomDao.ROOMTYPEID)!=null){
+        if (attrMap.get(RoomDao.ROOMTYPEID) != null) {
             roomAttrMap.put(RoomDao.ROOMTYPEID, attrMap.get(RoomDao.ROOMTYPEID));
         }
         EntityResult habitacionesLibres = roomService.freeRoomsQuery(roomAttrMap, roomKeyMap);//Todas las habitaciones libres entre esas dos fechas
@@ -122,7 +131,7 @@ public class BookingService implements IBookingService {
             //Calculamos el precio de la reserva
             EntityResult price = bookingPrice(attrMap);
             attrMap.put(BookingDao.PRICE, price.get(BookingDao.PRICE));
-            EntityResult erResultlado= this.daoHelper.insert(this.bookingDao, attrMap);
+            EntityResult erResultlado = this.daoHelper.insert(this.bookingDao, attrMap);
             erResultlado.put(BookingDao.PRICE, price.get(BookingDao.PRICE));
             return erResultlado;
         }
@@ -205,7 +214,7 @@ public class BookingService implements IBookingService {
             if (attrMap.get(BookingDao.ROOMID) != null) {
                 roomAttrMap.put(BookingDao.ROOMID, attrMap.get(RoomDao.IDHABITACION));
             }
-            if(attrMap.get(RoomDao.ROOMTYPEID)!=null){
+            if (attrMap.get(RoomDao.ROOMTYPEID) != null) {
                 roomAttrMap.put(RoomDao.ROOMTYPEID, attrMap.get(RoomDao.ROOMTYPEID));
             }
             EntityResult habitacionesLibres = roomService.freeRoomsQuery(roomAttrMap, roomKeyMap);//Todas las habitaciones libres entre esas dos fechas
@@ -242,7 +251,7 @@ public class BookingService implements IBookingService {
      * @return EntityResult
      */
     @Override
-    @Secured({ PermissionsProviderSecured.SECURED })
+    @Secured({PermissionsProviderSecured.SECURED})
     public EntityResult bookingCheckin(Map<String, Object> attrMap) {
         //Comprobamos que se ha introducido el id de la reserva
         if (attrMap.get(BookingDao.BOOKINGID) == null) {
@@ -308,7 +317,7 @@ public class BookingService implements IBookingService {
      * @return EntityResult
      */
     @Override
-    @Secured({ PermissionsProviderSecured.SECURED })
+    @Secured({PermissionsProviderSecured.SECURED})
     public EntityResult bookingCheckout(Map<String, Object> attrMap) {
         //Comprobamos que se ha introducido el id de la reserva
         //Si se introduce id de reserva se usa id de reserva
@@ -375,12 +384,13 @@ public class BookingService implements IBookingService {
     }
 
     /**
-     *  Metodo que realiza el calculo del precio de una reserva
+     * Metodo que realiza el calculo del precio de una reserva
+     *
      * @param attrMap fecha de inicio y fin de la reserva y el id de la habitacion
      * @return EntityResult con el precio de la reserva
      */
     @Override
-    @Secured({ PermissionsProviderSecured.SECURED })
+    @Secured({PermissionsProviderSecured.SECURED})
     public EntityResult bookingPrice(Map<String, Object> attrMap) {
         double priceBooking = 0;
         //Comprobamos que se ha introducido el id de la habitacion
@@ -391,7 +401,7 @@ public class BookingService implements IBookingService {
             return er;
         }
         //Comprobamos que se ha introducido la fecha de inicio
-        if (attrMap.get(BookingDao.STARTDATE) == null&&attrMap.get(BookingDao.ENDDATE) == null) {
+        if (attrMap.get(BookingDao.STARTDATE) == null && attrMap.get(BookingDao.ENDDATE) == null) {
             EntityResult er = new EntityResultMapImpl();
             er.setCode(EntityResult.OPERATION_WRONG);
             er.setMessage(ErrorMessages.NECESSARY_DATA);
@@ -419,79 +429,93 @@ public class BookingService implements IBookingService {
         EntityResult criteria = this.daoHelper.query(this.criteriaDao, attrMapCriteria, List.of(CriteriaDao.ID, CriteriaDao.NAME, CriteriaDao.MULTIPLIER));
 
         //Hacer que obtenga los multiplicadores por nombre
-        BigDecimal multiplierWeekend= (BigDecimal) criteria.getRecordValues(0).get(CriteriaDao.MULTIPLIER);
-        BigDecimal earlyBooking= (BigDecimal) criteria.getRecordValues(1).get(CriteriaDao.MULTIPLIER);
-        Map<Integer,BigDecimal> multiplierSeason=new HashMap<>();
+        BigDecimal multiplierWeekend = (BigDecimal) criteria.getRecordValues(0).get(CriteriaDao.MULTIPLIER);
+        BigDecimal earlyBooking = (BigDecimal) criteria.getRecordValues(1).get(CriteriaDao.MULTIPLIER);
+        Map<Integer, BigDecimal> multiplierSeason = new HashMap<>();
         multiplierSeason.put(0, BigDecimal.ONE);
-        multiplierSeason.put((int)criteria.getRecordValues(2).get(CriteriaDao.ID),(BigDecimal) criteria.getRecordValues(2).get(CriteriaDao.MULTIPLIER));
-        multiplierSeason.put((int)criteria.getRecordValues(3).get(CriteriaDao.ID),(BigDecimal) criteria.getRecordValues(3).get(CriteriaDao.MULTIPLIER));
-        BigDecimal multiplierLongStay= (BigDecimal) criteria.getRecordValues(4).get(CriteriaDao.MULTIPLIER);
+        multiplierSeason.put((int) criteria.getRecordValues(2).get(CriteriaDao.ID), (BigDecimal) criteria.getRecordValues(2).get(CriteriaDao.MULTIPLIER));
+        multiplierSeason.put((int) criteria.getRecordValues(3).get(CriteriaDao.ID), (BigDecimal) criteria.getRecordValues(3).get(CriteriaDao.MULTIPLIER));
+        BigDecimal multiplierLongStay = (BigDecimal) criteria.getRecordValues(4).get(CriteriaDao.MULTIPLIER);
 
         //Obtener fechas de la reserva
         LocalDate start;
         LocalDate startIter;
         LocalDate end;
         try {
-            start =  LocalDate.parse((String) attrMap.get(BookingDao.STARTDATE), DateTimeFormatter.ofPattern("yyyy-MM-dd"));
-            end =  LocalDate.parse((String) attrMap.get(BookingDao.ENDDATE), DateTimeFormatter.ofPattern("yyyy-MM-dd"));
-            startIter=start;
-        } catch (Exception e){
+            start = LocalDate.parse((String) attrMap.get(BookingDao.STARTDATE), DateTimeFormatter.ISO_DATE);
+            end = LocalDate.parse((String) attrMap.get(BookingDao.ENDDATE), DateTimeFormatter.ISO_DATE);
+            startIter = start;
+        } catch (Exception e) {
             EntityResult er = new EntityResultMapImpl();
             er.setCode(EntityResult.OPERATION_WRONG);
             er.setMessage(ErrorMessages.DATE_FORMAT_ERROR);
             return er;
         }
+        //Primero necesito cargar todos las DateCondition
+        //Luego las separo por tipo de aplicacion(Diaria,Unica)
+        //Luego creo un mapa que me guarda el id de la DateCondition y el numero de veces que se aplica
+        //Aplique las que se aplican una vez y añada al mapa el id de la DateCondition y el numero de veces que se aplica
+        //Itere por cada dia de la reserva y aplique las que se aplican diariamente añadiendo al mapa el id de la DateCondition y el numero de veces que se aplica
+        //Por ultimo itere por el mapa y aplique los multiplicadores
 
-        //Iterar por cada dia de la reserva y calcular el precio
-        while (!startIter.isAfter(end)) {
-            double extra = 0;
-            if(isWeekend(startIter)){
-                extra+=(multiplierWeekend.doubleValue()*roomprice)-roomprice;
+        //Obtener las DateCondition
+        Map<String, Object> attrMapDateCondition = new HashMap<>();
+        List<String> fields = new ArrayList<>();
+        fields.add("*");
+        EntityResult erDateCondition = criteriaService.criteriaQuery(attrMapDateCondition, fields);
+        //Multiplicadores
+        Map<Integer, BigDecimal> multiplierDateCondition = new HashMap<>();//Guarda los multiplicadores de las DateCondition
+        //Separar por tipo de aplicacion
+        Map<Integer,DateCondition> dateConditionDaily = new HashMap<>();//Guarda las condiciones que se aplican diariamente
+        Map<Integer,DateCondition> dateConditionUnique = new HashMap<>();//Guarda las condiciones que se aplican una vez
+
+        //Creo los dateCondition y cargo los multiplicadores
+        for (int i = 0; i < erDateCondition.calculateRecordNumber(); i++) {
+            multiplierDateCondition.put((int) erDateCondition.getRecordValues(i).get(CriteriaDao.ID), (BigDecimal) erDateCondition.getRecordValues(i).get(CriteriaDao.MULTIPLIER));
+            if (erDateCondition.getRecordValues(i).get(CriteriaDao.TYPE) != null && erDateCondition.getRecordValues(i).get(CriteriaDao.DATE_CONDITION) != null) {
+                String json = erDateCondition.getRecordValues(i).get(CriteriaDao.DATE_CONDITION).toString();
+                int id = (int) erDateCondition.getRecordValues(i).get(CriteriaDao.ID);
+                DateCondition dc = jsonToDateCondition(json);
+                if (erDateCondition.getRecordValues(i).get(CriteriaDao.TYPE).equals("unique")){
+                    dateConditionUnique.put(id,dc);
+                }else if(erDateCondition.getRecordValues(i).get(CriteriaDao.TYPE).equals("daily")){
+                    dateConditionDaily.put(id,dc);
+                }
             }
-            extra+=(roomprice*multiplierSeason.get(whatSeason(startIter)).doubleValue()-roomprice);
-            priceBooking+=roomprice+extra;
-            startIter=startIter.plusDays(1);
         }
 
-        //Descuento por reserva anticipada, si la fecha de inicio de la reserva es en mas de 10 dias
-        //Si la fecha de inicio es dentro de mas de 10 dias añadimos ese criterio
-        if(start.isAfter(LocalDate.now().plusDays(10))){
-            priceBooking=priceBooking*earlyBooking.doubleValue();
+        //Aplico las que se aplican una vez y le aplico el multiplicador a la habitacion
+        for (Map.Entry<Integer, DateCondition> entry : dateConditionUnique.entrySet()) {
+            if (entry.getValue().evaluate(start,end)) {
+                roomprice = roomprice * multiplierDateCondition.get(entry.getKey()).doubleValue();
+            }
         }
-        //Descuento por estancia larga, si la reserva es de mas de 5 dias
-        if(ChronoUnit.DAYS.between(start,end)>3){
-            priceBooking=priceBooking*multiplierLongStay.doubleValue();
+
+        //Crear mapa de id de DateCondition y el extra que se aplica
+        Map<Integer, BigDecimal> dateConditionExtraByCondition = new HashMap<>();
+        //Itero por cada dia de la reserva y aplico las que se aplican diariamente añadiendo al mapa el id de la DateCondition y el numero de veces que se aplica
+        while (!startIter.isAfter(end)) {
+            priceBooking = priceBooking + roomprice;
+            for (Map.Entry<Integer, DateCondition> entry : dateConditionDaily.entrySet()) {
+                if (entry.getValue().evaluate(startIter,end)) {
+                    if (dateConditionExtraByCondition.containsKey(entry.getKey())) {
+                        dateConditionExtraByCondition.put(entry.getKey(), dateConditionExtraByCondition.get(entry.getKey()).add(multiplierDateCondition.get(entry.getKey()).multiply(BigDecimal.valueOf(roomprice)).subtract(BigDecimal.valueOf(roomprice))));
+                    } else {
+                        dateConditionExtraByCondition.put(entry.getKey(), multiplierDateCondition.get(entry.getKey()).multiply(BigDecimal.valueOf(roomprice)).subtract(BigDecimal.valueOf(roomprice)));
+                    }
+                }
+            }
+            startIter = startIter.plusDays(1);
+        }
+
+        //por cada extra añado al precio de la reserva
+        for (Map.Entry<Integer, BigDecimal> entry : dateConditionExtraByCondition.entrySet()) {
+            priceBooking = priceBooking + entry.getValue().doubleValue();
         }
         EntityResult er = new EntityResultMapImpl();
         er.setCode(EntityResult.OPERATION_SUCCESSFUL);
         er.put(BookingDao.PRICE, BigDecimal.valueOf(priceBooking).setScale(2, RoundingMode.FLOOR));
         return er;
-    }
-
-    //Metodo que comprueba en que temporada esta la fecha
-    private int whatSeason(LocalDate localDate) {
-        BasicField startDayField = new BasicField(SeasonDao.START_DAY);
-        BasicField endDayField = new BasicField(SeasonDao.END_DAY);
-        BasicField startMonthField = new BasicField(SeasonDao.START_MONTH);
-        BasicField endMonthField = new BasicField(SeasonDao.END_MONTH);
-        BasicExpression bexp1 = new BasicExpression(startDayField, BasicOperator.LESS_EQUAL_OP, localDate.getDayOfMonth());//s.start_day >=?1
-        BasicExpression bexp2 = new BasicExpression(endDayField, BasicOperator.MORE_EQUAL_OP, localDate.getDayOfMonth());//s.end_day <=?2
-        BasicExpression bexp3 = new BasicExpression(startMonthField, BasicOperator.LESS_EQUAL_OP, localDate.getMonthValue());//s.start_month>=?3
-        BasicExpression bexp4 = new BasicExpression(endMonthField, BasicOperator.MORE_EQUAL_OP, localDate.getMonthValue());//s.end_month<=?4
-        BasicExpression bexp5 = new BasicExpression(bexp1, BasicOperator.AND_OP, bexp2);//s.start_day >=?1 AND s.end_day <=?2
-        BasicExpression bexp6 = new BasicExpression(bexp3, BasicOperator.AND_OP, bexp4);//s.start_month>=?3 AND s.end_month<=?4
-        BasicExpression bexp7 = new BasicExpression(bexp5, BasicOperator.AND_OP, bexp6);//s.start_day >=?1 AND s.end_day <=?2 AND s.start_month>=?3 AND s.end_month<=?4
-        Map<String, Object> filter = new HashMap<>();
-        filter.put(SQLStatementBuilder.ExtendedSQLConditionValuesProcessor.EXPRESSION_KEY, bexp7);
-        EntityResult er = this.daoHelper.query(this.seasonDao,filter, List.of(SeasonDao.CRITERIA_ID),SeasonDao.GET_SEASONS);
-        if (er.calculateRecordNumber()>0){
-            return (int) er.getRecordValues(0).get(SeasonDao.CRITERIA_ID);
-        }
-        return 0;
-    }
-    //Metodo que comprueba si la fecha es fin de semana
-    private boolean isWeekend(LocalDate date) {
-       return date.getDayOfWeek().equals(DayOfWeek.SATURDAY) || date.getDayOfWeek().equals(DayOfWeek.SUNDAY);
     }
 
     private EntityResult obtainFinalPrice(Map<String,Object> attrMap) {
@@ -524,6 +548,18 @@ public class BookingService implements IBookingService {
 
         extraexpenses.put("Total: ", price);
         return extraexpenses;
+    }
+
+    private DateCondition jsonToDateCondition(String json) {
+        try {
+            DateConditionModule dateConditionModule = new DateConditionModule();
+            ObjectMapper objectMapper = new ObjectMapper();
+            objectMapper.registerModule(dateConditionModule.getModule());
+            DateCondition dateCondition = objectMapper.readValue(json, DateCondition.class);
+            return dateCondition;
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
     }
 }
 
